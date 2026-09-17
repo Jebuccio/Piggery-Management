@@ -440,7 +440,6 @@ function AuthModal({ onClose }: { onClose: () => void }) {
             <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Account Role</label>
             <select value={role} onChange={(e) => setRole(e.target.value)} className="neu-inset p-2.5 rounded-xl w-full text-sm font-semibold outline-none">
               <option value="admin">Farm Admin</option>
-              <option value="seller">Store Seller</option>
             </select>
           </div>
         )}
@@ -638,7 +637,7 @@ export default function App() {
             <Dashboard
               activeTab={activeTab}
               sows={sows}
-              gestationEvents={gestationEvents}
+              gestationEventqs={gestationEvents}
               newBreeding={newBreeding}
               setNewBreeding={setNewBreeding}
               handleLogBreeding={handleLogBreeding}

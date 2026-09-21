@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, FormEvent } from 'react';
 import AdminSettingsPanel from './AdminSettingsPanel';
-import { supabase } from './supabaseClient';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient('https://sxftnugfaxiotrbzraym.supabase.co', 'sb_publishable_77mipSE4vAivfyVb51RuMA_riWhTAMc');
 
 /* ==========================================================================
    1. TYPES & INTERFACES
@@ -9,12 +11,13 @@ export type AdminTabState = 'dashboard' | 'sows' | 'gestation' | 'finder' | 'set
 
 export interface Sow {
   id: number;
-  user_id?: string;
+  user_id: string;
   sow_id: string;
   name: string;
   tag_number: string;
   status: 'Healthy' | 'Breeding' | 'Gestating' | 'Isolated';
-  notes: string;
+  notes?: string;
+  created_at?: string;
 }
 
 export interface GestationTask {

@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS public.sows (
   name TEXT NOT NULL,
   tag_number TEXT NOT NULL,
   status TEXT CHECK (status IN ('Healthy', 'Breeding', 'Gestating', 'Isolated')) DEFAULT 'Healthy',
+  breeding_date DATE, -- Added as OPTIONAL (allows NULL)
   notes TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );

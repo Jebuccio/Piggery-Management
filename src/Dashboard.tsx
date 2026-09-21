@@ -473,15 +473,15 @@ function StoreFinderView() {
    ========================================================================== */
 function GestationCalendarView({ user }: { user?: any }) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [tasks, setTasks] = useState<GestationTask[]>([]);
-  const [sows, setSows] = useState<Sow[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [sows, setSows] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
 
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<GestationTask | null>(null);
+  const [editingTask, setEditingTask] = useState<any | null>(null);
 
   // Form State
   const [formTitle, setFormTitle] = useState('');
@@ -492,16 +492,9 @@ function GestationCalendarView({ user }: { user?: any }) {
   const [formPriority, setFormPriority] = useState<'Low' | 'Medium' | 'High'>('Medium');
   const [formStatus, setFormStatus] = useState<'Pending' | 'Completed' | 'Cancelled'>('Pending');
 
-  useEffect(() => {
-    if (user) {
-      fetchTasks();
-      fetchSows();
-      subscribeToTasks();
-    }
-  }, [user]);
-
+  // Fetch Functions
   const fetchTasks = async () => {
-    if (!user) return;
+    if (!user?.id) return;
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -519,7 +512,7 @@ function GestationCalendarView({ user }: { user?: any }) {
   };
 
   const fetchSows = async () => {
-    if (!user) return;
+    if (!user?.id) return;
     try {
       const { data } = await supabase.from('sows').select('*').eq('user_id', user.id);
       setSows(data || []);
@@ -528,23 +521,44 @@ function GestationCalendarView({ user }: { user?: any }) {
     }
   };
 
+  // Subscription Function
   const subscribeToTasks = () => {
+    if (!user?.id) return;
+
     const channel = supabase
-      .channel('tasks_changes')
+      .channel(`tasks_changes_${user.id}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'gestation_tasks', filter: `user_id=eq.${user?.id}` },
+        { event: '*', schema: 'public', table: 'gestation_tasks', filter: `user_id=eq.${user.id}` },
         () => {
           fetchTasks();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.error('Realtime channel error in GestationCalendarView');
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
   };
 
+  // Fixed Effect Hook with proper cleanup execution
+  useEffect(() => {
+    if (!user?.id) return;
+
+    fetchTasks();
+    fetchSows();
+    const cleanup = subscribeToTasks();
+
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, [user?.id]);
+
+  // Calendar Logic
   const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
 
@@ -575,7 +589,7 @@ function GestationCalendarView({ user }: { user?: any }) {
     setIsModalOpen(true);
   };
 
-  const openEditModal = (task: GestationTask) => {
+  const openEditModal = (task: any) => {
     setEditingTask(task);
     setSelectedDate(task.task_date);
     setFormTitle(task.title);
@@ -639,7 +653,7 @@ function GestationCalendarView({ user }: { user?: any }) {
     }
   };
 
-  const handleToggleComplete = async (task: GestationTask) => {
+  const handleToggleComplete = async (task: any) => {
     const newStatus = task.status === 'Completed' ? 'Pending' : 'Completed';
     try {
       const { error } = await supabase
@@ -654,7 +668,7 @@ function GestationCalendarView({ user }: { user?: any }) {
     }
   };
 
-  // Calendar render constants
+  // Calendar constants
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
   const totalDays = daysInMonth(year, month);
@@ -979,7 +993,6 @@ function GestationCalendarView({ user }: { user?: any }) {
     </div>
   );
 }
-
 /* ==========================================================================
    7. MAIN ADMIN DASHBOARD VIEW WITH DYNAMIC STATS
    ========================================================================== */
@@ -1186,15 +1199,9 @@ function SowRecordsCRUDView({ user }: { user?: any }) {
   const [nameInput, setNameInput] = useState('');
   const [tagInput, setTagInput] = useState('');
 
-  useEffect(() => {
-    if (user) {
-      fetchSows();
-      subscribeToSows();
-    }
-  }, [user]);
-
+  // 1. Fetch Sows Function
   const fetchSows = async () => {
-    if (!user) return;
+    if (!user?.id) return;
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -1211,23 +1218,50 @@ function SowRecordsCRUDView({ user }: { user?: any }) {
     }
   };
 
+  // 2. Safe Realtime Subscription Function
   const subscribeToSows = () => {
+    if (!user?.id) return;
+
     const channel = supabase
-      .channel('sows_changes')
+      .channel(`sows_changes_${user.id}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'sows', filter: `user_id=eq.${user?.id}` },
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'sows', 
+          filter: `user_id=eq.${user.id}` 
+        },
         () => {
           fetchSows();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.error('Realtime subscription error for sows');
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
   };
 
+  // 3. React Effect Hook for Initial Load & Subscription Cleanup
+  useEffect(() => {
+    if (!user?.id) return;
+
+    fetchSows();
+    const cleanup = subscribeToSows();
+
+    return () => {
+      if (cleanup) {
+        cleanup();
+      }
+    };
+  }, [user?.id]);
+
+  // 4. Form Handlers
   const handleAddSow = async (e: FormEvent) => {
     e.preventDefault();
     if (!user) return;
